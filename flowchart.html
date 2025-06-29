@@ -2,19 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>Interactive Cannabis Flowchart</title>
 
-  <!-- ─── RESET & LAYOUT ───────────────────────────────── -->
+  <!-- ─── STYLES ──────────────────────────────────────────── -->
   <style>
+    /* full-screen, no scrollbars */
     html, body {
-      height: 100%;
       margin: 0;
       padding: 0;
+      height: 100%;
       overflow: hidden;
       background: #000;
       font-family: system-ui, sans-serif;
     }
+    /* container: zoom buttons / chart / info */
     #flow-widget {
       display: grid;
       grid-template-columns: auto 1fr 320px;
@@ -23,12 +25,14 @@
       overflow: hidden;
       background: #000;
     }
+    /* left panel: zoom controls */
     .zoom-pad {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
+      padding: 1rem;
     }
     .zoom-pad button {
       background: #fff;
@@ -37,10 +41,8 @@
       font-size: 1rem;
       cursor: pointer;
     }
+    /* middle panel: whiteboard + mermaid */
     .board {
-      position: relative;
-      width: 100%;
-      height: 100%;
       background: #fff;
       display: flex;
       align-items: center;
@@ -54,12 +56,13 @@
     #canvas.grabbing {
       cursor: grabbing;
     }
+    /* right panel: info text */
     #info {
       background: #fff;
       color: #000;
       padding: 1rem;
-      border-left: 3px solid #222;
       overflow-y: auto;
+      border-left: 3px solid #222;
     }
     #info h2 {
       margin: 0 0 0.5rem;
@@ -67,9 +70,10 @@
     }
     #info p {
       margin: 0;
-      white-space: pre-wrap;
       line-height: 1.35;
+      white-space: pre-wrap;
     }
+    /* mermaid tooltips */
     .mermaidTooltip {
       background: #333;
       color: #fff;
@@ -78,13 +82,13 @@
     }
   </style>
 
-  <!-- ─── MERMAID LIBRARY ────────────────────────────── -->
+  <!-- ─── MERMAID LIBRARY ───────────────────────────────── -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 
-  <!-- ─── INTERACTIONS & DEBUG ───────────────────────── -->
+  <!-- ─── SCRIPTS: init, zoom/pan & info callbacks ──────── -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Init Mermaid
+      // 1) Mermaid init + debug
       mermaid.initialize({
         startOnLoad: true,
         securityLevel: 'loose',
@@ -92,26 +96,26 @@
       });
       mermaid.parseError = err => console.error('🛑 Mermaid parse error →', err);
 
-      // Zoom & Pan
+      // 2) Zoom & Pan logic
       const canvas = document.getElementById('canvas');
-      if (!canvas) return console.error('#canvas not found – aborting zoom/pan');
+      if (!canvas) return console.error('#canvas element missing');
       let scale = 1, ox = 0, oy = 0;
-      const applyTransform = () => canvas.style.transform = `translate(${ox}px,${oy}px) scale(${scale})`;
-      window.zoomIn    = () => { scale *= 1.2; applyTransform(); };
-      window.zoomOut   = () => { scale /= 1.2; applyTransform(); };
-      window.resetZoom = () => { scale = 1; ox = oy = 0; applyTransform(); };
-      let dragging = false, startX = 0, startY = 0;
+      const apply = () => canvas.style.transform = `translate(${ox}px,${oy}px) scale(${scale})`;
+      window.zoomIn    = () => { scale *= 1.2; apply(); };
+      window.zoomOut   = () => { scale /= 1.2; apply(); };
+      window.resetZoom = () => { scale = 1; ox = oy = 0; apply(); };
+      let dragging = false, start = { x:0, y:0 };
       canvas.addEventListener('mousedown', e => {
         dragging = true;
-        startX = e.clientX - ox;
-        startY = e.clientY - oy;
+        start.x = e.clientX - ox;
+        start.y = e.clientY - oy;
         canvas.classList.add('grabbing');
       });
       canvas.addEventListener('mousemove', e => {
         if (!dragging) return;
-        ox = e.clientX - startX;
-        oy = e.clientY - startY;
-        applyTransform();
+        ox = e.clientX - start.x;
+        oy = e.clientY - start.y;
+        apply();
       });
       ['mouseup','mouseleave'].forEach(evt =>
         canvas.addEventListener(evt, () => {
@@ -120,12 +124,12 @@
         })
       );
 
-      // Info panel data
+      // 3) Info-panel data + callback
       const infoMap = {
-        A:['Live Cannabis Plant','Living plant with cannabinoids & terpenes; starting point of all processing.'],
+        A: ['Live Cannabis Plant','Living plant with cannabinoids & terpenes; starting point of all processing.'],
         B1:['Cut & Freeze','Harvest and flash-freeze to preserve delicate terpenes for “live” extracts.'],
         B2:['Dry/Cure Path','Traditional workflow: cut, dry, trim, cure buds.'],
-        B3:['Dry-sift Path','Input material destined for immediate dry-sift kief.'],
+        B3:['Dry-sift Path','Input destined for immediate dry-sift kief.'],
         C1:['Fresh Frozen Plant','Sub-zero storage locks in aroma until extraction.'],
         D1:['Ice Water Extraction','Solventless agitation in ice water → bubble hash.'],
         D2:['Hydrocarbon Extraction','Butane/propane extraction of fresh frozen → live resin.'],
@@ -191,10 +195,9 @@
         X3:['Waste','Spent biomass discarded or composted.']
       };
       window.showInfo = id => {
-        const e = infoMap[id];
-        if (!e) return;
-        document.getElementById('title').textContent = e[0];
-        document.getElementById('body').textContent = e[1];
+        if (!infoMap[id]) return;
+        document.getElementById('title').textContent = infoMap[id][0];
+        document.getElementById('body').textContent  = infoMap[id][1];
       };
     });
   </script>
@@ -202,12 +205,14 @@
 
 <body>
   <div id="flow-widget">
+    <!-- zoom controls -->
     <div class="zoom-pad">
       <button onclick="zoomIn()">➕ Zoom In</button>
       <button onclick="zoomOut()">➖ Zoom Out</button>
       <button onclick="resetZoom()">🔄 Reset</button>
     </div>
 
+    <!-- chart board -->
     <div class="board">
       <div id="canvas">
         <pre id="mermaid" class="mermaid">
@@ -380,6 +385,7 @@ flowchart LR
       </div>
     </div>
 
+    <!-- info panel -->
     <div id="info">
       <h2 id="title">Hover or click a step →</h2>
       <p id="body">Full explanations appear here.</p>
