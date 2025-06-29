@@ -39,9 +39,11 @@
       justify-content:center;
       align-items:center;
     }
+    /* SVG gets these IDs at runtime */
     #canvas { transform-origin:0 0; }
     #canvas.grab { cursor:grab; }
     #canvas.grabbing { cursor:grabbing; }
+
     #info {
       background:#fff;
       padding:1rem;
@@ -50,61 +52,63 @@
     #info h2 { margin-top:0; }
   </style>
 
-  <!-- 3) JS: init, zoom/pan & info callbacks -->
+  <!-- 3) JS: mermaid init, zoom/pan & info -->
   <script>
     document.addEventListener('DOMContentLoaded',()=>{
-      // Mermaid init
+      // Mermaid
       mermaid.initialize({ startOnLoad:true, securityLevel:'loose', flowchart:{ htmlLabels:true } });
       window.mermaid.parseError = e=>console.error('Mermaid parse error →',e);
 
       // Zoom/Pan
-      let s=1, ox=0, oy=0, drag=false, startX, startY;
-      window.zoomIn = ()=>{ s*=1.2; apply(); };
-      window.zoomOut= ()=>{ s/=1.2; apply(); };
-      window.resetZoom= ()=>{ s=1; ox=oy=0; apply(); };
+      let s=1, ox=0, oy=0, drag=false, sx, sy;
+      window.zoomIn=()=>{ s*=1.2; apply(); };
+      window.zoomOut=()=>{ s/=1.2; apply(); };
+      window.resetZoom=()=>{ s=1; ox=oy=0; apply(); };
       function apply(){
         const c=document.getElementById('canvas');
         if(c) c.style.transform=`translate(${ox}px,${oy}px) scale(${s})`;
       }
-      // Wait for SVG to render
+      // After SVG renders, hook mouse events
       setTimeout(()=>{
-        const c=document.querySelector('#flow-widget .mermaid svg');
-        if(!c) return;
-        c.id='canvas';
-        c.classList.add('grab');
-        c.addEventListener('mousedown',e=>{
+        const svg=document.querySelector('.mermaid svg');
+        if(!svg) return;
+        svg.id='canvas';
+        svg.classList.add('grab');
+        svg.addEventListener('mousedown',e=>{
           drag=true;
-          startX=e.clientX-ox;
-          startY=e.clientY-oy;
-          c.classList.add('grabbing');
+          sx=e.clientX-ox;
+          sy=e.clientY-oy;
+          svg.classList.add('grabbing');
         });
-        c.addEventListener('mousemove',e=>{
+        svg.addEventListener('mousemove',e=>{
           if(!drag) return;
-          ox=e.clientX-startX;
-          oy=e.clientY-startY;
+          ox=e.clientX - sx;
+          oy=e.clientY - sy;
           apply();
         });
-        ['mouseup','mouseleave'].forEach(ev=>{
-          c.addEventListener(ev,()=>{
+        ['mouseup','mouseleave'].forEach(ev=>
+          svg.addEventListener(ev,()=>{
             drag=false;
-            c.classList.remove('grabbing');
-          });
-        });
+            svg.classList.remove('grabbing');
+          })
+        );
       },200);
 
-      // Info data & callback
+      // Info map & callback
       const infoMap = {
         A:['Live Cannabis Plant','Living plant with cannabinoids & terpenes…'],
         B1:['Cut & Freeze','Harvest and flash-freeze…'],
         B2:['Dry/Cure Path','Traditional workflow:…'],
         B3:['Dry-sift Path','Material destined for kief…'],
-        /* … all the rest exactly as before … */
+        C1:['Fresh Frozen','Sub-zero storage locks in aroma…'],
+        D1:['Ice-water Hash','…'],
+        /* … copy in all your other entries exactly … */
         X3:['Waste','Spent biomass discarded or composted.']
       };
-      window.showInfo=id=>{
-        if(!infoMap[id])return;
-        document.getElementById('title').textContent=infoMap[id][0];
-        document.getElementById('body').textContent=infoMap[id][1];
+      window.showInfo = id => {
+        if(!infoMap[id]) return;
+        document.getElementById('title').textContent = infoMap[id][0];
+        document.getElementById('body').textContent  = infoMap[id][1];
       };
     });
   </script>
@@ -117,15 +121,17 @@
       <button onclick="zoomOut()">➖ Zoom Out</button>
       <button onclick="resetZoom()">🔄 Reset</button>
     </div>
+
     <div class="board">
-      <div class="mermaid">
+      <pre class="mermaid">
 flowchart LR
-  %% ROOT
+  %% ─── ROOT
   A((🌿 Live Cannabis Plant))
     A --> B1["❄️ Cut & Freeze"]
     A --> B2["🌬️ Cut / Trim / Dry / Cure"]
     A --> B3["🔁 Cut & Sift"]
-  %% FRESH-FROZEN
+
+  %% ─── FRESH-FROZEN
     B1 --> C1["🥶 Fresh Frozen Plant"]
     C1 --> D1["🧊 Ice Water Extraction"]
     C1 --> D2["💥 Hydrocarbon Extraction"]
@@ -170,7 +176,8 @@ flowchart LR
     N7 --> V2
     N7 --> V3
     N7 --> V4
-  %% DRIED-FLOWER
+
+  %% ─── DRIED-FLOWER
     B2 --> P1["🍃 Remove Leaves"]
     P1 --> P2["🪱 Compost"]
     P1 --> P3["💨 Hang Dry"]
@@ -202,81 +209,83 @@ flowchart LR
     Q7 --> V2
     Q7 --> V3
     Q7 --> V4
-  %% DRY-SIFT
+
+  %% ─── DRY-SIFT
     B3 --> S10["🧺 Dry Sift"]
     S10 --> S11["🌿 Kief"]
     S11 --> S1
     S11 --> S2
     S10 --> X3["🗑️ Waste"]
-  %% CLICK CALLBACKS
-  click A  callback showInfo
-  click B1 callback showInfo
-  click B2 callback showInfo
-  click B3 callback showInfo
-  click C1 callback showInfo
-  click D1 callback showInfo
-  click D2 callback showInfo
-  click D3 callback showInfo
-  click D4 callback showInfo
-  click E1 callback showInfo
-  click F1 callback showInfo
-  click G1 callback showInfo
-  click H1 callback showInfo
-  click I1 callback showInfo
-  click I2 callback showInfo
-  click J1 callback showInfo
-  click J2 callback showInfo
-  click L1 callback showInfo
-  click L2 callback showInfo
-  click L3 callback showInfo
-  click L4 callback showInfo
-  click L5 callback showInfo
-  click L6 callback showInfo
-  click M1 callback showInfo
-  click M2 callback showInfo
-  click M3 callback showInfo
-  click M4 callback showInfo
-  click M5 callback showInfo
-  click M6 callback showInfo
-  click V1 callback showInfo
-  click V2 callback showInfo
-  click V3 callback showInfo
-  click V4 callback showInfo
-  click Y1 callback showInfo
-  click N1 callback showInfo
-  click N2 callback showInfo
-  click N3 callback showInfo
-  click N4 callback showInfo
-  click N5 callback showInfo
-  click N6 callback showInfo
-  click N7 callback showInfo
-  click P1 callback showInfo
-  click P2 callback showInfo
-  click P3 callback showInfo
-  click P4 callback showInfo
-  click P5 callback showInfo
-  click P6 callback showInfo
-  click Q1 callback showInfo
-  click Q2 callback showInfo
-  click Q3 callback showInfo
-  click R1 callback showInfo
-  click Q4 callback showInfo
-  click R2 callback showInfo
-  click S1 callback showInfo
-  click S2 callback showInfo
-  click R3 callback showInfo
-  click R4 callback showInfo
-  click R5 callback showInfo
-  click R6 callback showInfo
-  click R7 callback showInfo
-  click R8 callback showInfo
-  click Q5 callback showInfo
-  click Q6 callback showInfo
-  click Q7 callback showInfo
-  click S10 callback showInfo
-  click S11 callback showInfo
-  click X3 callback showInfo
-      </div>
+
+  %% ─── CLICK EVENTS (no “callback” keyword!)
+    click A  showInfo
+    click B1 showInfo
+    click B2 showInfo
+    click B3 showInfo
+    click C1 showInfo
+    click D1 showInfo
+    click D2 showInfo
+    click D3 showInfo
+    click D4 showInfo
+    click E1 showInfo
+    click F1 showInfo
+    click G1 showInfo
+    click H1 showInfo
+    click I1 showInfo
+    click I2 showInfo
+    click J1 showInfo
+    click J2 showInfo
+    click L1 showInfo
+    click L2 showInfo
+    click L3 showInfo
+    click L4 showInfo
+    click L5 showInfo
+    click L6 showInfo
+    click M1 showInfo
+    click M2 showInfo
+    click M3 showInfo
+    click M4 showInfo
+    click M5 showInfo
+    click M6 showInfo
+    click V1 showInfo
+    click V2 showInfo
+    click V3 showInfo
+    click V4 showInfo
+    click Y1 showInfo
+    click N1 showInfo
+    click N2 showInfo
+    click N3 showInfo
+    click N4 showInfo
+    click N5 showInfo
+    click N6 showInfo
+    click N7 showInfo
+    click P1 showInfo
+    click P2 showInfo
+    click P3 showInfo
+    click P4 showInfo
+    click P5 showInfo
+    click P6 showInfo
+    click Q1 showInfo
+    click Q2 showInfo
+    click Q3 showInfo
+    click R1 showInfo
+    click Q4 showInfo
+    click R2 showInfo
+    click S1 showInfo
+    click S2 showInfo
+    click R3 showInfo
+    click R4 showInfo
+    click R5 showInfo
+    click R6 showInfo
+    click R7 showInfo
+    click R8 showInfo
+    click Q5 showInfo
+    click Q6 showInfo
+    click Q7 showInfo
+    click S10 showInfo
+    click S11 showInfo
+    click X3 showInfo
+      </pre>
     </div>
 
     <div id="info">
