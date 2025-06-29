@@ -1,105 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Interactive Cannabis Flowchart</title>
 
-  <!-- ─── LAYOUT & THEME ─────────────────────────────────── -->
+  <!-- ─── RESET & LAYOUT ───────────────────────────────── -->
   <style>
-    :root { --header-h: 90px; }
     html, body {
-      margin:0; padding:0;
-      background:#000;
-      font-family:system-ui,sans-serif;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+      font-family: system-ui, sans-serif;
     }
     #flow-widget {
-      margin-top: var(--header-h);
-      height: calc(100vh - var(--header-h));
       display: grid;
-      grid-template-columns: auto minmax(0,1fr) 320px;
-      background:#000;
-      overflow:hidden;
+      grid-template-columns: auto 1fr 320px;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
     }
     .zoom-pad {
-      display:flex; flex-direction:column; gap:.6rem;
-      align-self:center; justify-self:center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
     }
     .zoom-pad button {
-      background:#fff; border:none;
-      padding:.5rem 1.2rem; font-size:1rem;
-      cursor:pointer;
+      background: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
     }
     .board {
-      background:#fff; width:100%; height:100%;
-      display:flex; justify-content:center; align-items:center;
-      overflow:hidden;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
     }
-    #canvas { transform-origin:0 0; }
-    #canvas.grab { cursor:grab; }
-    #canvas.grabbing { cursor:grabbing; }
+    #canvas {
+      transform-origin: 0 0;
+      cursor: grab;
+    }
+    #canvas.grabbing {
+      cursor: grabbing;
+    }
     #info {
-      background:#fff; color:#000; padding:1rem;
-      border-left:3px solid #222; overflow-y:auto;
+      background: #fff;
+      color: #000;
+      padding: 1rem;
+      border-left: 3px solid #222;
+      overflow-y: auto;
     }
-    #info h2 { margin:0 0 .5rem; font-size:1.15rem; }
-    #info p { margin:0; white-space:pre-wrap; line-height:1.35; }
+    #info h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.15rem;
+    }
+    #info p {
+      margin: 0;
+      white-space: pre-wrap;
+      line-height: 1.35;
+    }
     .mermaidTooltip {
-      background:#333; color:#fff; padding:6px 10px;
-      border-radius:4px;
+      background: #333;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 4px;
     }
   </style>
 
-  <!-- ─── MERMAID ──────────────────────────────────────── -->
+  <!-- ─── MERMAID LIBRARY ────────────────────────────── -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 
-  <!-- ─── INTERACTIONS & DEBUG ─────────────────────────── -->
+  <!-- ─── INTERACTIONS & DEBUG ───────────────────────── -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      /* — Mermaid Init — */
+      // Init Mermaid
       mermaid.initialize({
         startOnLoad: true,
         securityLevel: 'loose',
         flowchart: { htmlLabels: true, useMaxWidth: true }
       });
-      /* — Debug parse errors — */
-      mermaid.parseError = (err, hash) => {
-        console.error('🛑 Mermaid parse error:', err);
-      };
+      mermaid.parseError = err => console.error('🛑 Mermaid parse error →', err);
 
-      /* — Zoom & Pan — */
+      // Zoom & Pan
       const canvas = document.getElementById('canvas');
-      let scale=1, ox=0, oy=0;
-      const apply=()=>
-        canvas.style.transform = `translate(${ox}px,${oy}px) scale(${scale})`;
-      window.zoomIn  = ()=>{ scale*=1.2; apply() };
-      window.zoomOut = ()=>{ scale/=1.2; apply() };
-      window.resetZoom = ()=>{ scale=1; ox=oy=0; apply() };
-
-      let dragging=false, start={x:0,y:0};
+      if (!canvas) return console.error('#canvas not found – aborting zoom/pan');
+      let scale = 1, ox = 0, oy = 0;
+      const applyTransform = () => canvas.style.transform = `translate(${ox}px,${oy}px) scale(${scale})`;
+      window.zoomIn    = () => { scale *= 1.2; applyTransform(); };
+      window.zoomOut   = () => { scale /= 1.2; applyTransform(); };
+      window.resetZoom = () => { scale = 1; ox = oy = 0; applyTransform(); };
+      let dragging = false, startX = 0, startY = 0;
       canvas.addEventListener('mousedown', e => {
-        dragging=true;
-        start={ x:e.clientX-ox, y:e.clientY-oy };
+        dragging = true;
+        startX = e.clientX - ox;
+        startY = e.clientY - oy;
         canvas.classList.add('grabbing');
-        canvas.classList.remove('grab');
       });
       canvas.addEventListener('mousemove', e => {
-        if(!dragging) return;
-        ox = e.clientX - start.x;
-        oy = e.clientY - start.y;
-        apply();
+        if (!dragging) return;
+        ox = e.clientX - startX;
+        oy = e.clientY - startY;
+        applyTransform();
       });
       ['mouseup','mouseleave'].forEach(evt =>
         canvas.addEventListener(evt, () => {
-          dragging=false;
-          canvas.classList.add('grab');
+          dragging = false;
           canvas.classList.remove('grabbing');
         })
       );
-      canvas.classList.add('grab');
 
-      /* — Info Panel Data — */
-      const info = {
+      // Info panel data
+      const infoMap = {
         A:['Live Cannabis Plant','Living plant with cannabinoids & terpenes; starting point of all processing.'],
         B1:['Cut & Freeze','Harvest and flash-freeze to preserve delicate terpenes for “live” extracts.'],
         B2:['Dry/Cure Path','Traditional workflow: cut, dry, trim, cure buds.'],
@@ -169,13 +191,15 @@
         X3:['Waste','Spent biomass discarded or composted.']
       };
       window.showInfo = id => {
-        if (!info[id]) return;
-        document.getElementById('title').textContent = info[id][0];
-        document.getElementById('body').textContent  = info[id][1];
+        const e = infoMap[id];
+        if (!e) return;
+        document.getElementById('title').textContent = e[0];
+        document.getElementById('body').textContent = e[1];
       };
     });
   </script>
 </head>
+
 <body>
   <div id="flow-widget">
     <div class="zoom-pad">
@@ -183,17 +207,18 @@
       <button onclick="zoomOut()">➖ Zoom Out</button>
       <button onclick="resetZoom()">🔄 Reset</button>
     </div>
+
     <div class="board">
       <div id="canvas">
         <pre id="mermaid" class="mermaid">
 flowchart LR
-  %% ─── ROOT ─────────────────────────────
+  %% ─── ROOT ─────────────────────────────────────────
   A((🌿 Live Cannabis Plant))
     A --> B1["❄️ Cut & Freeze"]
     A --> B2["🌬️ Cut / Trim / Dry / Cure"]
     A --> B3["🔁 Cut & Sift"]
 
-  %% ─── FRESH-FROZEN PATH ─────────────────
+  %% ─── FRESH-FROZEN PATH ───────────────────────────
     B1 --> C1["🥶 Fresh Frozen Plant"]
     C1 --> D1["🧊 Ice Water Extraction"]
     C1 --> D2["💥 Hydrocarbon Extraction"]
@@ -243,7 +268,7 @@ flowchart LR
     N7 --> V3
     N7 --> V4
 
-  %% ─── DRIED-FLOWER PATH ───────────────────────
+  %% ─── DRIED-FLOWER PATH ───────────────────────────
     B2 --> P1["🍃 Remove Leaves"]
     P1 --> P2["🪱 Compost"]
     P1 --> P3["💨 Hang Dry"]
@@ -276,88 +301,89 @@ flowchart LR
     Q7 --> V3
     Q7 --> V4
 
-  %% ─── DRY-SIFT PATH ───────────────────────────
+  %% ─── DRY-SIFT PATH ───────────────────────────────
     B3 --> S10["🧺 Dry Sift"]
     S10 --> S11["🌿 Kief"]
     S11 --> S1
     S11 --> S2
     S10 --> X3["🗑️ Waste"]
 
-  %% ─── CLICK CALLBACKS ─────────────────────────
-    click A  call showInfo() "Live Plant"
-    click B1 call showInfo() "Cut & Freeze"
-    click B2 call showInfo() "Dry/Cure Path"
-    click B3 call showInfo() "Dry-sift Path"
-    click C1 call showInfo() "Fresh Frozen Plant"
-    click D1 call showInfo() "Ice Water Extraction"
-    click D2 call showInfo() "Hydrocarbon Extraction"
-    click D3 call showInfo() "CO₂ Extraction"
-    click D4 call showInfo() "Ethanol Extraction"
-    click E1 call showInfo() "Bubble Hash"
-    click F1 call showInfo() "Dry Hash"
-    click G1 call showInfo() "Bubble Hash (dry)"
-    click H1 call showInfo() "Use or Press"
-    click I1 call showInfo() "Press → Rosin"
-    click I2 call showInfo() "Press → Hashish"
-    click J1 call showInfo() "Live Rosin"
-    click J2 call showInfo() "Hash Block"
-    click L1 call showInfo() "Live Resin"
-    click L2 call showInfo() "Purge"
-    click L3 call showInfo() "Resin Vape"
-    click L4 call showInfo() "Crystalize"
-    click L5 call showInfo() "THCA Diamonds"
-    click L6 call showInfo() "Terp Sauce"
-    click M1 call showInfo() "Crude CO₂ Oil"
-    click M2 call showInfo() "Capture Terpenes"
-    click M3 call showInfo() "Winterize"
-    click M4 call showInfo() "Refined Oil"
-    click M5 call showInfo() "Distill"
-    click M6 call showInfo() "THC Distillate"
-    click V1 call showInfo() "Vape"
-    click V2 call showInfo() "Edibles"
-    click V3 call showInfo() "Capsules"
-    click V4 call showInfo() "Topicals"
-    click Y1 call showInfo() "Terpenes"
-    click N1 call showInfo() "Crude Ethanol"
-    click N2 call showInfo() "Winterize"
-    click N3 call showInfo() "Refined"
-    click N4 call showInfo() "Decarb"
-    click N5 call showInfo() "Full Spectrum"
-    click N6 call showInfo() "Distill"
-    click N7 call showInfo() "Distillate"
-    click P1 call showInfo() "Remove Leaves"
-    click P2 call showInfo() "Compost"
-    click P3 call showInfo() "Hang Dry"
-    click P4 call showInfo() "Trim"
-    click P5 call showInfo() "Cure"
-    click P6 call showInfo() "Cured Flower"
-    click Q1 call showInfo() "Flower"
-    click Q2 call showInfo() "Pre-roll"
-    click Q3 call showInfo() "Press Rosin"
-    click R1 call showInfo() "Rosin"
-    click Q4 call showInfo() "Sift → Kief"
-    click R2 call showInfo() "Kief"
-    click S1 call showInfo() "Loose Kief"
-    click S2 call showInfo() "Pressed Kief"
-    click R3 call showInfo() "BHO"
-    click R4 call showInfo() "Crude Oil"
-    click R5 call showInfo() "Winterize"
-    click R6 call showInfo() "Refined"
-    click R7 call showInfo() "Distill"
-    click R8 call showInfo() "Distillate"
-    click Q5 call showInfo() "Solvent Extract"
-    click Q6 call showInfo() "Decarb Flower"
-    click Q7 call showInfo() "Infuse Oil"
-    click S10 call showInfo() "Dry Sift"
-    click S11 call showInfo() "Kief (dry-sift)"
-    click X3 call showInfo() "Waste"
+  %% ─── CLICK CALLBACKS ─────────────────────────────
+    click A   callback showInfo "Live Cannabis Plant"
+    click B1  callback showInfo "Cut & Freeze"
+    click B2  callback showInfo "Dry/Cure Path"
+    click B3  callback showInfo "Dry-sift Path"
+    click C1  callback showInfo "Fresh Frozen Plant"
+    click D1  callback showInfo "Ice Water Extraction"
+    click D2  callback showInfo "Hydrocarbon Extraction"
+    click D3  callback showInfo "CO₂ Extraction"
+    click D4  callback showInfo "Ethanol Extraction"
+    click E1  callback showInfo "Bubble Hash"
+    click F1  callback showInfo "Dry Hash"
+    click G1  callback showInfo "Bubble Hash (dry)"
+    click H1  callback showInfo "Use or Press"
+    click I1  callback showInfo "Press → Rosin"
+    click I2  callback showInfo "Press → Hashish"
+    click J1  callback showInfo "Live Rosin"
+    click J2  callback showInfo "Hash Block"
+    click L1  callback showInfo "Live Resin"
+    click L2  callback showInfo "Purge"
+    click L3  callback showInfo "Resin Vape"
+    click L4  callback showInfo "Crystalize"
+    click L5  callback showInfo "THCA Diamonds"
+    click L6  callback showInfo "Terp Sauce"
+    click M1  callback showInfo "Crude CO₂ Oil"
+    click M2  callback showInfo "Capture Terpenes"
+    click M3  callback showInfo "Winterize"
+    click M4  callback showInfo "Refined Oil"
+    click M5  callback showInfo "Distill"
+    click M6  callback showInfo "THC Distillate"
+    click V1  callback showInfo "Vape"
+    click V2  callback showInfo "Edibles"
+    click V3  callback showInfo "Capsules"
+    click V4  callback showInfo "Topicals"
+    click Y1  callback showInfo "Terpenes"
+    click N1  callback showInfo "Crude Ethanol"
+    click N2  callback showInfo "Winterize"
+    click N3  callback showInfo "Refined"
+    click N4  callback showInfo "Decarb"
+    click N5  callback showInfo "Full Spectrum"
+    click N6  callback showInfo "Distill"
+    click N7  callback showInfo "Distillate"
+    click P1  callback showInfo "Remove Leaves"
+    click P2  callback showInfo "Compost"
+    click P3  callback showInfo "Hang Dry"
+    click P4  callback showInfo "Trim"
+    click P5  callback showInfo "Cure"
+    click P6  callback showInfo "Cured Flower"
+    click Q1  callback showInfo "Flower"
+    click Q2  callback showInfo "Pre-roll"
+    click Q3  callback showInfo "Press Rosin"
+    click R1  callback showInfo "Rosin"
+    click Q4  callback showInfo "Sift → Kief"
+    click R2  callback showInfo "Kief"
+    click S1  callback showInfo "Loose Kief"
+    click S2  callback showInfo "Pressed Kief"
+    click R3  callback showInfo "BHO"
+    click R4  callback showInfo "Crude Oil"
+    click R5  callback showInfo "Winterize"
+    click R6  callback showInfo "Refined"
+    click R7  callback showInfo "Distill"
+    click R8  callback showInfo "Distillate"
+    click Q5  callback showInfo "Solvent Extract"
+    click Q6  callback showInfo "Decarb Flower"
+    click Q7  callback showInfo "Infuse Oil"
+    click S10 callback showInfo "Dry Sift"
+    click S11 callback showInfo "Kief (dry-sift)"
+    click X3  callback showInfo "Waste"
         </pre>
       </div>
     </div>
-    <aside id="info">
+
+    <div id="info">
       <h2 id="title">Hover or click a step →</h2>
       <p id="body">Full explanations appear here.</p>
-    </aside>
+    </div>
   </div>
 </body>
 </html>
