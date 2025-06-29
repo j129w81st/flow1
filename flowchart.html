@@ -2,141 +2,130 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
   <title>Interactive Cannabis Flowchart</title>
 
-  <!-- 1) Mermaid -->
+  <!-- 1) Load Mermaid -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 
-  <!-- 2) Styles -->
+  <!-- 2) Initialize Mermaid & debug hook -->
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      flowchart: { htmlLabels: true, useMaxWidth: true }
+    });
+    window.mermaid.parseError = (err) =>
+      console.error('Mermaid parse-error →', err);
+  </script>
+
+  <!-- 3) Styles -->
   <style>
-    html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#000; }
-    #flow-widget {
-      display:grid;
-      grid-template-columns:auto 1fr 320px;
-      height:100vh;
+    :root { --header-h: 90px; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #000;
+      font-family: system-ui, sans-serif;
+      overflow: hidden;
     }
+
+    /* full widget under your site’s header */
+    #flow-widget {
+      margin-top: var(--header-h);
+      height: calc(100vh - var(--header-h));
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) 320px;
+      background: #000;
+      overflow: hidden;
+    }
+
+    /* left gutter: zoom buttons */
     .zoom-pad {
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:.5rem;
-      background:#000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-self: center;
+      justify-self: start;
+      margin-left: 1rem;
     }
     .zoom-pad button {
-      background:#fff;
-      border:none;
-      padding:.5rem 1rem;
-      font-size:1rem;
-      cursor:pointer;
+      background: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
     }
+
+    /* center board: white background, fixed area */
     .board {
-      background:#fff;
-      position:relative;
-      overflow:hidden;
-      display:flex;
-      justify-content:center;
-      align-items:center;
+      background: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
     }
-    /* SVG gets these IDs at runtime */
-    #canvas { transform-origin:0 0; }
-    #canvas.grab { cursor:grab; }
-    #canvas.grabbing { cursor:grabbing; }
 
+    /* the actual mermaid container */
+    #canvas {
+      transform-origin: 0 0;
+    }
+    #canvas.grab {
+      cursor: grab;
+    }
+    #canvas.grabbing {
+      cursor: grabbing;
+    }
+
+    /* right info panel */
     #info {
-      background:#fff;
-      padding:1rem;
-      overflow-y:auto;
+      background: #fff;
+      color: #000;
+      padding: 1rem;
+      overflow-y: auto;
     }
-    #info h2 { margin-top:0; }
+    #info h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.2rem;
+    }
+    #info p {
+      margin: 0;
+      line-height: 1.4;
+    }
   </style>
-
-  <!-- 3) JS: mermaid init, zoom/pan & info -->
-  <script>
-    document.addEventListener('DOMContentLoaded',()=>{
-      // Mermaid
-      mermaid.initialize({ startOnLoad:true, securityLevel:'loose', flowchart:{ htmlLabels:true } });
-      window.mermaid.parseError = e=>console.error('Mermaid parse error →',e);
-
-      // Zoom/Pan
-      let s=1, ox=0, oy=0, drag=false, sx, sy;
-      window.zoomIn=()=>{ s*=1.2; apply(); };
-      window.zoomOut=()=>{ s/=1.2; apply(); };
-      window.resetZoom=()=>{ s=1; ox=oy=0; apply(); };
-      function apply(){
-        const c=document.getElementById('canvas');
-        if(c) c.style.transform=`translate(${ox}px,${oy}px) scale(${s})`;
-      }
-      // After SVG renders, hook mouse events
-      setTimeout(()=>{
-        const svg=document.querySelector('.mermaid svg');
-        if(!svg) return;
-        svg.id='canvas';
-        svg.classList.add('grab');
-        svg.addEventListener('mousedown',e=>{
-          drag=true;
-          sx=e.clientX-ox;
-          sy=e.clientY-oy;
-          svg.classList.add('grabbing');
-        });
-        svg.addEventListener('mousemove',e=>{
-          if(!drag) return;
-          ox=e.clientX - sx;
-          oy=e.clientY - sy;
-          apply();
-        });
-        ['mouseup','mouseleave'].forEach(ev=>
-          svg.addEventListener(ev,()=>{
-            drag=false;
-            svg.classList.remove('grabbing');
-          })
-        );
-      },200);
-
-      // Info map & callback
-      const infoMap = {
-        A:['Live Cannabis Plant','Living plant with cannabinoids & terpenes…'],
-        B1:['Cut & Freeze','Harvest and flash-freeze…'],
-        B2:['Dry/Cure Path','Traditional workflow:…'],
-        B3:['Dry-sift Path','Material destined for kief…'],
-        C1:['Fresh Frozen','Sub-zero storage locks in aroma…'],
-        D1:['Ice-water Hash','…'],
-        /* … copy in all your other entries exactly … */
-        X3:['Waste','Spent biomass discarded or composted.']
-      };
-      window.showInfo = id => {
-        if(!infoMap[id]) return;
-        document.getElementById('title').textContent = infoMap[id][0];
-        document.getElementById('body').textContent  = infoMap[id][1];
-      };
-    });
-  </script>
 </head>
 
 <body>
   <div id="flow-widget">
+    <!-- Zoom controls -->
     <div class="zoom-pad">
       <button onclick="zoomIn()">➕ Zoom In</button>
       <button onclick="zoomOut()">➖ Zoom Out</button>
       <button onclick="resetZoom()">🔄 Reset</button>
     </div>
 
+    <!-- Diagram board -->
     <div class="board">
-      <pre class="mermaid">
+      <pre id="canvas" class="mermaid">
 flowchart LR
-  %% ─── ROOT
+  %% ─── ROOT ─────────────────────────────────────────
   A((🌿 Live Cannabis Plant))
     A --> B1["❄️ Cut & Freeze"]
     A --> B2["🌬️ Cut / Trim / Dry / Cure"]
     A --> B3["🔁 Cut & Sift"]
 
-  %% ─── FRESH-FROZEN
+  %% ─── FRESH-FROZEN PATH ───────────────────────────
     B1 --> C1["🥶 Fresh Frozen Plant"]
     C1 --> D1["🧊 Ice Water Extraction"]
     C1 --> D2["💥 Hydrocarbon Extraction"]
     C1 --> D3["🧪 CO₂ Extraction"]
     C1 --> D4["🍸 Ethanol Extraction"]
+
     D1 --> E1["💧 Bubble Hash"]
     E1 --> F1["🌬️ Dry Hash"]
     F1 --> G1["✨ Bubble Hash (dry)"]
@@ -145,12 +134,14 @@ flowchart LR
     H1 --> I2["🧱 Press → Hashish"]
     I1 --> J1["💎 Live Rosin"]
     I2 --> J2["🔸 Hash Block"]
+
     D2 --> L1["🧪 Live Resin"]
     L1 --> L2["🔥 Purge"]
     L2 --> L3["💨 Resin Vape"]
     L1 --> L4["⏳ Crystalize"]
     L4 --> L5["💠 THCA Diamonds"]
     L4 --> L6["💧 Terp Sauce"]
+
     D3 --> M1["💥 Crude CO₂ Oil"]
     M1 --> M2["🌺 Capture Terpenes"]
     M1 --> M3["🧊 Winterize"]
@@ -163,6 +154,7 @@ flowchart LR
     M6 --> V4["🧴 Topicals"]
     M2 --> Y1["🌼 Terpenes"]
     Y1 --> V1
+
     D4 --> N1["🧪 Crude Ethanol"]
     N1 --> N2["❄️ Winterize"]
     N2 --> N3["🧼 Refined"]
@@ -177,7 +169,7 @@ flowchart LR
     N7 --> V3
     N7 --> V4
 
-  %% ─── DRIED-FLOWER
+  %% ─── DRIED-FLOWER PATH ───────────────────────────
     B2 --> P1["🍃 Remove Leaves"]
     P1 --> P2["🪱 Compost"]
     P1 --> P3["💨 Hang Dry"]
@@ -190,8 +182,8 @@ flowchart LR
     Q3 --> R1["💎 Rosin"]
     P6 --> Q4["🪺 Sift → Kief"]
     Q4 --> R2["🌿 Kief"]
-    R2 --> S1["Loose"]
-    R2 --> S2["Press"]
+    R2 --> S1["Loose Kief"]
+    R2 --> S2["Pressed Kief"]
     S2 --> R1
     P6 --> Q5["🧪 Solvent Extract"]
     Q5 --> R3["💥 BHO"]
@@ -210,88 +202,198 @@ flowchart LR
     Q7 --> V3
     Q7 --> V4
 
-  %% ─── DRY-SIFT
+  %% ─── DRY-SIFT PATH ───────────────────────────────
     B3 --> S10["🧺 Dry Sift"]
     S10 --> S11["🌿 Kief"]
     S11 --> S1
     S11 --> S2
     S10 --> X3["🗑️ Waste"]
 
-  %% ─── CLICK EVENTS (no “callback” keyword!)
-    click A  showInfo
-    click B1 showInfo
-    click B2 showInfo
-    click B3 showInfo
-    click C1 showInfo
-    click D1 showInfo
-    click D2 showInfo
-    click D3 showInfo
-    click D4 showInfo
-    click E1 showInfo
-    click F1 showInfo
-    click G1 showInfo
-    click H1 showInfo
-    click I1 showInfo
-    click I2 showInfo
-    click J1 showInfo
-    click J2 showInfo
-    click L1 showInfo
-    click L2 showInfo
-    click L3 showInfo
-    click L4 showInfo
-    click L5 showInfo
-    click L6 showInfo
-    click M1 showInfo
-    click M2 showInfo
-    click M3 showInfo
-    click M4 showInfo
-    click M5 showInfo
-    click M6 showInfo
-    click V1 showInfo
-    click V2 showInfo
-    click V3 showInfo
-    click V4 showInfo
-    click Y1 showInfo
-    click N1 showInfo
-    click N2 showInfo
-    click N3 showInfo
-    click N4 showInfo
-    click N5 showInfo
-    click N6 showInfo
-    click N7 showInfo
-    click P1 showInfo
-    click P2 showInfo
-    click P3 showInfo
-    click P4 showInfo
-    click P5 showInfo
-    click P6 showInfo
-    click Q1 showInfo
-    click Q2 showInfo
-    click Q3 showInfo
-    click R1 showInfo
-    click Q4 showInfo
-    click R2 showInfo
-    click S1 showInfo
-    click S2 showInfo
-    click R3 showInfo
-    click R4 showInfo
-    click R5 showInfo
-    click R6 showInfo
-    click R7 showInfo
-    click R8 showInfo
-    click Q5 showInfo
-    click Q6 showInfo
-    click Q7 showInfo
-    click S10 showInfo
-    click S11 showInfo
-    click X3 showInfo
+  %% ─── CLICK CALLBACKS ─────────────────────────────
+    click A  call showInfo  "Live Cannabis Plant"
+    click B1 call showInfo  "Cut & Freeze"
+    click B2 call showInfo  "Dry/Cure Path"
+    click B3 call showInfo  "Dry-sift Path"
+    click C1 call showInfo  "Fresh Frozen Plant"
+    click D1 call showInfo  "Ice Water Extraction"
+    click D2 call showInfo  "Hydrocarbon Extraction"
+    click D3 call showInfo  "CO₂ Extraction"
+    click D4 call showInfo  "Ethanol Extraction"
+    click E1 call showInfo  "Bubble Hash"
+    click F1 call showInfo  "Dry Hash"
+    click G1 call showInfo  "Dry Bubble Hash"
+    click H1 call showInfo  "Use or Press"
+    click I1 call showInfo  "Press → Rosin"
+    click I2 call showInfo  "Press → Hashish"
+    click J1 call showInfo  "Live Rosin"
+    click J2 call showInfo  "Hash Block"
+    click L1 call showInfo  "Live Resin"
+    click L2 call showInfo  "Purge"
+    click L3 call showInfo  "Resin Vape"
+    click L4 call showInfo  "Crystalize"
+    click L5 call showInfo  "THCA Diamonds"
+    click L6 call showInfo  "Terp Sauce"
+    click M1 call showInfo  "Crude CO₂ Oil"
+    click M2 call showInfo  "Capture Terpenes"
+    click M3 call showInfo  "Winterize"
+    click M4 call showInfo  "Refined Oil"
+    click M5 call showInfo  "Distill"
+    click M6 call showInfo  "THC Distillate"
+    click V1 call showInfo  "Vape"
+    click V2 call showInfo  "Edibles"
+    click V3 call showInfo  "Capsules"
+    click V4 call showInfo  "Topicals"
+    click Y1 call showInfo  "Terpenes"
+    click N1 call showInfo  "Crude Ethanol"
+    click N2 call showInfo  "Winterize"
+    click N3 call showInfo  "Refined"
+    click N4 call showInfo  "Decarb"
+    click N5 call showInfo  "Full Spectrum"
+    click N6 call showInfo  "Distill"
+    click N7 call showInfo  "Distillate"
+    click P1 call showInfo  "Remove Leaves"
+    click P2 call showInfo  "Compost"
+    click P3 call showInfo  "Hang Dry"
+    click P4 call showInfo  "Trim"
+    click P5 call showInfo  "Cure"
+    click P6 call showInfo  "Cured Flower"
+    click Q1 call showInfo  "Flower"
+    click Q2 call showInfo  "Pre-roll"
+    click Q3 call showInfo  "Press Rosin"
+    click R1 call showInfo  "Rosin"
+    click Q4 call showInfo  "Sift → Kief"
+    click R2 call showInfo  "Kief"
+    click S1 call showInfo  "Loose Kief"
+    click S2 call showInfo  "Pressed Kief"
+    click R3 call showInfo  "BHO"
+    click R4 call showInfo  "Crude Oil"
+    click R5 call showInfo  "Winterize"
+    click R6 call showInfo  "Refined"
+    click R7 call showInfo  "Distill"
+    click R8 call showInfo  "Distillate"
+    click Q5 call showInfo  "Solvent Extract"
+    click Q6 call showInfo  "Decarb Flower"
+    click Q7 call showInfo  "Infuse Oil"
+    click S10 call showInfo  "Dry Sift"
+    click S11 call showInfo  "Kief (dry-sift)"
+    click X3  call showInfo  "Waste"
       </pre>
     </div>
 
+    <!-- Info panel -->
     <div id="info">
-      <h2 id="title">Hover or click a step →</h2>
-      <p id="body">Full explanations appear here.</p>
+      <h2>Hover or click a step →</h2>
+      <p>Full explanations appear here.</p>
     </div>
   </div>
+
+  <!-- 4) Zoom/Pan + Info JS -->
+  <script>
+    const chart = document.getElementById('canvas');
+    let scale = 1, ox = 0, oy = 0, dragging = false, start = {};
+
+    function apply() {
+      chart.style.transform = `translate(${ox}px,${oy}px) scale(${scale})`;
+    }
+    window.zoomIn  = () => { scale *= 1.2; apply(); };
+    window.zoomOut = () => { scale /= 1.2; apply(); };
+    window.resetZoom = () => { scale = 1; ox = oy = 0; apply(); };
+
+    chart.addEventListener('mousedown', e => {
+      dragging = true;
+      start.x = e.clientX - ox;
+      start.y = e.clientY - oy;
+      chart.classList.add('grabbing');
+    });
+    chart.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      ox = e.clientX - start.x;
+      oy = e.clientY - start.y;
+      apply();
+    });
+    ['mouseup','mouseleave'].forEach(evt =>
+      chart.addEventListener(evt, () => {
+        dragging = false;
+        chart.classList.remove('grabbing');
+      })
+    );
+
+    /* full info map */
+    const infoMap = {
+      A: ['Live Cannabis Plant','Living plant with cannabinoids & terpenes; starting point of all processing.'],
+      B1:['Cut & Freeze','Harvest and flash-freeze to preserve delicate terpenes for “live” extracts.'],
+      B2:['Dry/Cure Path','Traditional workflow: cut, dry, trim, cure buds.'],
+      B3:['Dry-sift Path','Material destined for immediate dry-sift kief.'],
+      C1:['Fresh Frozen Plant','Sub-zero storage locks in aroma until extraction.'],
+      D1:['Ice Water Extraction','Solventless agitation in ice water → bubble hash.'],
+      D2:['Hydrocarbon Extraction','Butane/propane extraction of fresh frozen → live resin.'],
+      D3:['CO₂ Extraction','Supercritical CO₂ pulls cannabinoids; needs post-processing.'],
+      D4:['Ethanol Extraction','Cold ethanol soak creates full-spectrum crude oil.'],
+      E1:['Bubble Hash','Wet resin glands collected from ice-water wash.'],
+      F1:['Dry Hash','Bubble hash carefully dried for stability.'],
+      G1:['Bubble Hash (dry)','Dried bubble hash; ready to use or press.'],
+      H1:['Use or Press','Consume hash directly or press to rosin/hashish.'],
+      I1:['Press → Rosin','High pressure + moderate heat squeezes rosin.'],
+      I2:['Press → Hashish','Compression forms traditional hash blocks.'],
+      J1:['Live Rosin','Rosin from fresh-frozen hash – superior flavor.'],
+      J2:['Hash Block','Solid pressed hashish for smoking.'],
+      L1:['Live Resin','Hydrocarbon extract with very high terpene content.'],
+      L2:['Purge','Vacuum + gentle heat remove residual solvent.'],
+      L3:['Resin Vape','Live resin formulated into vape cartridges.'],
+      L4:['Crystalize','Slow THCA crystallization (“diamond mining”).'],
+      L5:['THCA Diamonds','Nearly pure THCA crystals; extremely potent.'],
+      L6:['Terp Sauce','Terpene-rich liquid separated from diamonds.'],
+      M1:['Crude CO₂ Oil','Unrefined extract containing waxes & pigments.'],
+      M2:['Capture Terpenes','Low-temp CO₂ fraction collects volatiles.'],
+      M3:['Winterize','Cold ethanol + filtration remove fats/waxes.'],
+      M4:['Refined Oil','Cleaner oil after dewaxing; ready for distillation.'],
+      M5:['Distill','Vacuum distillation isolates cannabinoids.'],
+      M6:['THC Distillate','High-purity, nearly flavorless THC oil.'],
+      V1:['Vape','Distillate + terpenes → vape carts.'],
+      V2:['Edibles','Oil incorporated into foods.'],
+      V3:['Capsules','Precise oral dosing in gel caps.'],
+      V4:['Topicals','Extracts blended into creams/lotions.'],
+      Y1:['Terpenes','Captured native terpenes for flavor & entourage effect.'],
+      N1:['Crude Ethanol','Initial ethanol extract rich in chlorophyll & waxes.'],
+      N2:['Winterize','Precipitate & filter waxes from ethanol crude.'],
+      N3:['Refined','Cleaner oil after dewaxing/polishing.'],
+      N4:['Decarb','Heat converts THCA→THC for edible activation.'],
+      N5:['Full Spectrum','Activated oil retaining full cannabinoid matrix.'],
+      N6:['Distill','Distillation of refined ethanol oil.'],
+      N7:['Distillate','Pure THC distillate from ethanol path.'],
+      P1:['Remove Leaves','Fan leaves trimmed off to improve drying.'],
+      P2:['Compost','Plant waste turned into compost.'],
+      P3:['Hang Dry','Slow drying of buds in a controlled room.'],
+      P4:['Trim','Manicure buds; remove sugar leaves.'],
+      P5:['Cure','Jar curing smooths smoke & enhances flavor.'],
+      P6:['Cured Flower','Finished buds ready for sale or extraction.'],
+      Q1:['Flower','Loose buds for smoking/vaping.'],
+      Q2:['Pre-roll','Ground flower rolled into joints.'],
+      Q3:['Press Rosin','Flower pressed to solventless rosin.'],
+      R1:['Rosin','Solventless concentrate from flower/hash.'],
+      Q4:['Sift → Kief','Dry-sieve buds/trim to collect kief.'],
+      R2:['Kief','Loose trichome powder – potent topper.'],
+      S1:['Loose Kief','Kief sprinkled on bowls or sold loose.'],
+      S2:['Pressed Kief','Kief compressed into hash coins/blocks.'],
+      R3:['BHO','Butane hash oil from dried flower.'],
+      R4:['Crude Oil','Unrefined solvent extract requiring cleanup.'],
+      R5:['Winterize','Remove waxes from crude solvent extract.'],
+      R6:['Refined','Cleaner oil after winterization.'],
+      R7:['Distill','Vacuum distillation step.'],
+      R8:['Distillate','Final distillate from dried-flower path.'],
+      Q5:['Solvent Extract','Generic solvent extraction of flower.'],
+      Q6:['Decarb Flower','Heat buds to activate cannabinoids for edibles.'],
+      Q7:['Infuse Oil','Cannabinoids infused into butter/cooking oils.'],
+      S10:['Dry Sift','Mechanical separation of trichomes (kief).'],
+      S11:['Kief (dry-sift)','Kief collected from dry-sift screens.'],
+      X3:['Waste','Spent biomass discarded or composted.']
+    };
+
+    window.showInfo = (id) => {
+      if (!infoMap[id]) return;
+      document.querySelector('#info h2').textContent = infoMap[id][0];
+      document.querySelector('#info p').textContent = infoMap[id][1];
+    };
+  </script>
 </body>
 </html>
